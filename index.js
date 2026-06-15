@@ -926,7 +926,20 @@ async function handleUserMessage(ctx, textPrompt, base64Image = null) {
 
   // If there's an active job running in this chat, don't trigger another one
   if (activeJobs.has(chatId)) {
-    return ctx.reply("Yo bro! I'm already cooking a build for you in the background. If you want to cancel the current run, just reply with **stop**! 🛑");
+    // Store the pending request globally to avoid the 64-byte callback_data limit
+    if (!global.pendingRequests) global.pendingRequests = new Map();
+    global.pendingRequests.set(chatId, { text: textPrompt, username: ctx.chat.username });
+
+    // Ask if they want to cancel the current job and start this new one
+    await ctx.reply(`⚠️ **Wait up!** I am already working on your previous request.\n\nDo you want me to **stop** what I'm doing and work on this new request instead?\n\nNew Request:\n"${textPrompt}"`, {
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: "🛑 Stop Current & Start New", callback_data: `override_prompt` }],
+          [{ text: "⏭️ Discard New Request", callback_data: "discard_new" }]
+        ]
+      }
+    });
+    return;
   }
 
   // Set up active job with an AbortController for thread-like cancel capability
@@ -1062,6 +1075,99 @@ async function handleUserMessage(ctx, textPrompt, base64Image = null) {
     ctx.reply(`❌ **Bot Error:**\n\`\`\`\n${err.message}\n\`\`\``);
   }
 }
+
+async function handleCommand(ctx, userPrompt) {
+  const text = userPrompt.trim();
+  const cmd = text.split(" ")[0].toLowerCase();
+  
+  if (cmd === "/start" || cmd === "/options" || cmd === "/help") {
+    return ctx.reply("🤖 **Neet Bot Control Panel**\n\nChoose an action below:", {
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: "🔑 Change API Key", callback_data: "cmd_api_key" }],
+          [{ text: "🧠 Select AI Model", callback_data: "cmd_model" }],
+          [{ text: "🛑 Shutdown System", callback_data: "cmd_shutdown" }],
+          [{ text: "🌐 Open Web Dashboard", url: "https://raagneet.vercel.app" }]
+        ]
+      }
+    });
+  }
+  
+  if (cmd === "/shutdown") {
+    ctx.reply("⚠️ **SHUTDOWN INITIATED**\nShutting down all background processes and terminating the connection...");
+    setTimeout(() => process.exit(0), 1000);
+    return;
+  }
+  
+  return ctx.reply(`Unknown command: ${cmd}\nType /options to see available commands.`);
+}
+
+bot.on("callback_query", async (ctx) => {
+  const data = ctx.callbackQuery.data;
+  const chatId = ctx.callbackQuery.message.chat.id;
+  const username = ctx.callbackQuery.from.username || ctx.callbackQuery.from.first_name;
+  
+  // Acknowledge to remove loading spinner
+  await ctx.answerCbQuery();
+  
+  if (data === "cmd_api_key") {
+    global.telegramState = global.telegramState || {};
+    global.telegramState.awaitingApiKeyInput = true;
+    const activeKeyType = currentSession.activeKeyType || process.env.ACTIVE_KEY_TYPE || "openrouter";
+    return ctx.reply(`🔑 **Change API Key Request Received.**\nPlease paste your new **${activeKeyType.toUpperCase()}** API Key:`);
+  }
+  
+  if (data === "cmd_model") {
+    const activeKeyType = currentSession.activeKeyType || process.env.ACTIVE_KEY_TYPE || "openrouter";
+    const keyboard = await getModelKeyboard(activeKeyType);
+    if (keyboard.length === 0) {
+      return ctx.reply(`⚠️ **Warning:** No models could be dynamically fetched from the API. Please verify your API Key and Base URL configuration in the dashboard.`);
+    }
+    return ctx.reply("Select one of the available models below to switch immediately:", {
+      parse_mode: 'Markdown',
+      reply_markup: { inline_keyboard: keyboard }
+    });
+  }
+  
+  if (data === "cmd_shutdown") {
+    await ctx.reply("⚠️ **SHUTDOWN INITIATED**\nShutting down all background processes and terminating the connection...");
+    setTimeout(() => process.exit(0), 1000);
+    return;
+  }
+  
+  if (data === "override_prompt") {
+    const pending = global.pendingRequests ? global.pendingRequests.get(chatId) : null;
+    if (!pending) {
+      return ctx.reply("⚠️ No pending request found to override with.");
+    }
+    const userPrompt = pending.text;
+    
+    // Stop current job
+    if (activeJobs.has(chatId)) {
+      const job = activeJobs.get(chatId);
+      job.cancel();
+      activeJobs.delete(chatId);
+      await ctx.reply("🛑 Stopped previous process.");
+    }
+    
+    // Clear pending request
+    global.pendingRequests.delete(chatId);
+    
+    // Start new request
+    return processNewRequest(ctx, userPrompt, chatId, pending.username, null);
+  }
+  
+  if (data === "discard_new") {
+    return ctx.reply("⏭️ Discarded new request. Continuing with the current ongoing process.");
+  }
+
+  // Model switching callbacks (starts with string matching model name)
+  if (data && data.includes("/")) {
+    currentSession.modelName = data;
+    saveSession();
+    return ctx.reply(`✅ Model successfully changed to: \`${data}\``, { parse_mode: 'Markdown' });
+  }
+});
 
 // Handler for plain text messages
 bot.on("text", async (ctx) => {
@@ -1381,7 +1487,11 @@ async function processProjectRequest(ctx, userPrompt, base64Image = null, totalU
       if (job.cancelled) return;
 
       if (!vercelResult.success) {
-        throw new Error(`Vercel Build Failed:\n${vercelResult.errorLog}`);
+        if (vercelResult.errorLog.includes("timed out")) {
+          await ctx.reply("⚠️ Vercel is taking longer than usual to deploy. It might still succeed in the background, but I'm moving on to save time!");
+        } else {
+          throw new Error(`Vercel Build Failed:\n${vercelResult.errorLog}`);
+        }
       }
 
       // Success! Cache the live URL
@@ -1904,7 +2014,7 @@ app.get("/api/models", async (req, res) => {
 });
 
 // Authentic OAuth Credentials
-const OAUTH_CLIENT_ID = process.env.GOOGLE_OAUTH_CLIENT_ID || "114758703364-i8e1843ormd52t91fiee47jfotj3i5vu.apps.googleusercontent.com";
+const OAUTH_CLIENT_ID = process.env.GOOGLE_OAUTH_CLIENT_ID || "";
 const OAUTH_CLIENT_SECRET = process.env.GOOGLE_OAUTH_CLIENT_SECRET || "";
 
 // API: Authentic Google Sign-in Initiation Redirect

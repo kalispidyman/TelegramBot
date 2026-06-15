@@ -2502,12 +2502,16 @@ const PORT = process.env.PORT || 3005;
 server.listen(PORT, async () => {
   console.log(`Express API & WebSockets & Static Server listening on port ${PORT}`);
 
-  // ── Register Telegram Webhook (avoids ECONNRESET from long-polling on HF) ──
-  // We hardcode the Hugging Face Space URL because SPACE_HOST is sometimes missing in Docker spaces.
-  const isCloud = process.env.SPACE_ID || process.env.NODE_ENV === 'production' || __dirname.includes('/app');
+  // ── Register Telegram Webhook ──
+  // We check for Render or Hugging Face
+  const isCloud = process.env.SPACE_ID || process.env.RENDER || process.env.NODE_ENV === 'production' || __dirname.includes('/app') || process.env.RENDER_EXTERNAL_URL;
   
   if (isCloud) {
-    const webhookUrl = `https://neetne-neet-telegram-bot.hf.space/api/webhook`;
+    let webhookUrl = `https://neetne-neet-telegram-bot.hf.space/api/webhook`;
+    if (process.env.RENDER_EXTERNAL_URL) {
+      webhookUrl = `${process.env.RENDER_EXTERNAL_URL}/api/webhook`;
+    }
+    
     bot.telegram.setWebhook(webhookUrl)
       .then(() => {
         console.log(`[Webhook] Registered: ${webhookUrl}`);

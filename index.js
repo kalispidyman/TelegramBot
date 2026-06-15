@@ -921,13 +921,14 @@ async function handleUserMessage(ctx, textPrompt, base64Image = null) {
         const vercelResult = await trackVercelDeployment(ctx, fakeJob, preCommitDeploymentUid);
         
         if (vercelResult.success) {
-          await ctx.reply(`🎉 **Boom! Directly saved and deployed successfully!**\n🔗 ${vercelResult.liveUrl}`);
+          const liveLink = vercelResult.liveUrl ? `\n🔗 <a href="${vercelResult.liveUrl}">${vercelResult.liveUrl}</a>` : "";
+          await ctx.reply(`🎉 <b>Boom! Directly saved and deployed successfully!</b>${liveLink}`, { parse_mode: "HTML" }).catch(e => console.error(e));
         } else {
-          await ctx.reply(`⚠️ **Commit successful but Vercel deploy encountered issues:**\n\`\`\`\n${vercelResult.errorLog || "Build failed."}\n\`\`\``);
+          await ctx.reply(`⚠️ <b>Commit successful but Vercel deploy encountered issues:</b>\n<pre>${vercelResult.errorLog || "Build failed."}</pre>`, { parse_mode: "HTML" }).catch(e => console.error(e));
         }
       } catch (err) {
         console.error("Direct bot commit error:", err);
-        await ctx.reply(`❌ **Failed to commit directly:** ${err.message}`);
+        await ctx.reply(`❌ <b>Failed to commit directly:</b> ${err.message}`, { parse_mode: "HTML" }).catch(e => console.error(e));
       }
       return;
     }
@@ -1610,7 +1611,8 @@ async function processProjectRequest(ctx, userPrompt, base64Image = null, totalU
       job.cancel();
       activeJobs.delete(chatId);
 
-      await ctx.reply(`✅ Boom! Project successfully built, auto-corrected, committed, and deployed to Vercel! You're good to go, bro! 🔥`);
+      const liveLink = vercelResult.liveUrl ? `\n\nYour live, updated website is now public here:\n🔗 <a href="${vercelResult.liveUrl}">${vercelResult.liveUrl}</a>` : "";
+      await ctx.reply(`✅ <b>Boom! Project successfully built, auto-corrected, committed, and deployed!</b> You're good to go, bro! 🔥${liveLink}`, { parse_mode: "HTML" }).catch(e => console.error("Error sending success reply:", e));
       
       // Print usage stats
       // await printUsageSummary(ctx, totalUsage);
@@ -1747,8 +1749,6 @@ async function trackVercelDeployment(ctx, job, oldDeploymentUid = null) {
           // Success! Fetch the permanent production URL
           const prodDomain = await getProjectProductionUrl(projectId, token);
           const liveUrl = prodDomain ? `https://${prodDomain}` : `https://${current.url}`;
-
-          await ctx.reply(`🎉 **Boom! Vercel successfully deployed!** [Step 5/5]\nYour live, updated website is now public here:\n🔗 ${liveUrl}\n🔥 Happy coding, bro!`);
           return { success: true, liveUrl };
 
         } else if (state === "ERROR") {

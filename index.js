@@ -38,7 +38,7 @@ console.error = function(...args) {
 
 const { Telegraf } = require("telegraf");
 const { getFileEdits, handleChatOrIntent } = require("./ai-handler");
-const { commitBatch, getRepoFiles, getRepoFilesWithContent, getFileContent, getRepoFilesWithMeta } = require("./github-handler");
+const { commitBatch, getRepoFiles, getRepoFilesWithContent, getRepoFilesWithMeta, setGithubConfig } = require("./github-handler");
 const { getLatestDeployment, getProjectProductionUrl, getBuildErrors } = require("./vercel-handler");
 const fs = require("fs");
 const path = require("path");
@@ -1086,11 +1086,16 @@ async function handleCommand(ctx, userPrompt) {
         inline_keyboard: [
           [{ text: "🔑 Change API Key", callback_data: "cmd_api_key" }],
           [{ text: "🧠 Select AI Model", callback_data: "cmd_model" }],
+          [{ text: "📁 Switch Working Project", callback_data: "cmd_project" }],
           [{ text: "🛑 Shutdown System", callback_data: "cmd_shutdown" }],
           [{ text: "🌐 Open Web Dashboard", url: "https://raagneet.vercel.app" }]
         ]
       }
     });
+  }
+  
+  if (cmd === "/project") {
+    return sendProjectSelector(ctx);
   }
   
   if (cmd === "/shutdown") {
@@ -1100,6 +1105,39 @@ async function handleCommand(ctx, userPrompt) {
   }
   
   return ctx.reply(`Unknown command: ${cmd}\nType /options to see available commands.`);
+}
+
+async function sendProjectSelector(ctx) {
+  // Ensure default projects exist
+  if (!currentSession.projects) {
+    currentSession.projects = [
+      {
+        name: "raagneet",
+        githubOwner: process.env.GITHUB_OWNER || "kalispidyman",
+        githubRepo: process.env.GITHUB_REPO || "raagneet",
+        vercelProjectId: process.env.VERCEL_PROJECT_ID
+      },
+      {
+        name: "Digitech",
+        githubOwner: process.env.GITHUB_OWNER || "kalispidyman",
+        githubRepo: "Digitech",
+        vercelProjectId: "" // Needs to be configured via dashboard later
+      }
+    ];
+    currentSession.activeProjectIndex = 0;
+    saveSession();
+  }
+
+  const buttons = currentSession.projects.map((proj, idx) => {
+    const isCurrent = idx === currentSession.activeProjectIndex ? "✅ " : "";
+    return [{ text: `${isCurrent}${proj.name} (${proj.githubRepo})`, callback_data: `proj_${idx}` }];
+  });
+
+  return ctx.reply("📁 **Select Active Working Project:**", {
+    reply_markup: {
+      inline_keyboard: buttons
+    }
+  });
 }
 
 bot.on("callback_query", async (ctx) => {
@@ -1367,6 +1405,17 @@ async function processProjectRequest(ctx, userPrompt, base64Image = null, totalU
 
   const modelName = currentSession.modelName  || "deepseek/deepseek-chat";
 
+  // Determine Active Project
+  let activeProj = { name: "raagneet", githubOwner: process.env.GITHUB_OWNER, githubRepo: process.env.GITHUB_REPO, vercelProjectId: process.env.VERCEL_PROJECT_ID };
+  if (currentSession.projects && currentSession.projects.length > 0) {
+    const idx = currentSession.activeProjectIndex || 0;
+    activeProj = currentSession.projects[idx];
+  }
+  
+  // Configure GitHub Handler for this request
+  setGithubConfig(activeProj.githubOwner, activeProj.githubRepo, process.env.GITHUB_BRANCH || "main");
+  job.vercelProjectId = activeProj.vercelProjectId || process.env.VERCEL_PROJECT_ID;
+
   // Persistent typing indicator during background build process (refreshed every 4s)
   const buildTypingInterval = setInterval(() => {
     if (!job.cancelled) {
@@ -1466,7 +1515,7 @@ async function processProjectRequest(ctx, userPrompt, base64Image = null, totalU
       let preCommitDeploymentUid = null;
       try {
         const token = process.env.VERCEL_TOKEN;
-        const projectId = process.env.VERCEL_PROJECT_ID;
+        const projectId = job.vercelProjectId;
         if (token && projectId) {
           const snap = await getLatestDeployment(projectId, token);
           preCommitDeploymentUid = snap ? snap.uid : null;
@@ -1565,7 +1614,7 @@ async function processProjectRequest(ctx, userPrompt, base64Image = null, totalU
 // We wait until a *different* (newer) deployment UID appears before monitoring it.
 async function trackVercelDeployment(ctx, job, oldDeploymentUid = null) {
   const token = process.env.VERCEL_TOKEN;
-  const projectId = process.env.VERCEL_PROJECT_ID;
+  const projectId = job.vercelProjectId || process.env.VERCEL_PROJECT_ID;
 
   if (!token || !projectId) {
     console.log("Vercel credentials missing in .env. Skipping Vercel deployment tracking.");
@@ -1847,7 +1896,15 @@ app.get("/api/session", (req, res) => {
     email: currentSession.email,
     name: currentSession.name,
     picture: currentSession.picture,
-    hasApiKey: !!activeKey,
+    hasApiKey: (() => {
+      const type = currentSession.activeKeyType || "openrouter";
+      if (type === "openrouter") return !!(currentSession.openrouterApiKey || process.env.OPENROUTER_API_KEY);
+      if (type === "bluesminds") return !!(currentSession.bluesmindsApiKey || process.env.BLUESMINDS_API_KEY);
+      if (type === "google") return !!(currentSession.googleApiKey || process.env.GOOGLE_API_KEY);
+      if (type === "alibaba") return !!(currentSession.alibabaApiKey || process.env.ALIBABA_API_KEY);
+      if (type === "custom") return !!(currentSession.customApiKey || process.env.CUSTOM_API_KEY);
+      return !!activeKey;
+    })(),
     maskedApiKey: maskedKey,
     rawApiKey: activeKey,
     hasCustomApiKey: !!activeCustomKey,
@@ -2625,12 +2682,12 @@ server.listen(PORT, async () => {
     bot.telegram.setWebhook(webhookUrl)
       .then(() => {
         console.log(`[Webhook] Registered: ${webhookUrl}`);
-        return bot.telegram.setMyCommands([
-          { command: 'models', description: 'View and select an AI Model' },
-          { command: 'provider', description: 'Change your active API Provider' },
-          { command: 'editapikeys', description: 'Update your API Key' },
-          { command: 'setmodel', description: 'Manually set a model name' }
-        ]);
+        // Register slash commands for Telegram Menu
+        bot.telegram.setMyCommands([
+          { command: "options", description: "Open Neet Bot Control Panel" },
+          { command: "project", description: "Switch Working Project" },
+          { command: "shutdown", description: "Shutdown System" }
+        ]).catch(e => console.error("Failed to register commands:", e));
       })
       .catch(err => {
         console.error('[Webhook] Failed to set webhook:', err.message);

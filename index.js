@@ -1187,10 +1187,24 @@ bot.on("callback_query", async (ctx) => {
     });
   }
   
+  if (data === "cmd_project") {
+    return sendProjectSelector(ctx);
+  }
+
   if (data === "cmd_shutdown") {
     await ctx.reply("⚠️ **SHUTDOWN INITIATED**\nShutting down all background processes and terminating the connection...");
     setTimeout(() => process.exit(0), 1000);
     return;
+  }
+  
+  if (data.startsWith("proj_")) {
+    const idx = parseInt(data.replace("proj_", ""), 10);
+    if (currentSession.projects && currentSession.projects[idx]) {
+      currentSession.activeProjectIndex = idx;
+      saveSession();
+      const proj = currentSession.projects[idx];
+      return ctx.reply(`✅ **Project context switched successfully!**\n\nActive Repo: \`${proj.githubOwner}/${proj.githubRepo}\`\n\nAll subsequent requests will now edit this codebase!`, { parse_mode: "Markdown" });
+    }
   }
   
   if (data === "override_prompt") {

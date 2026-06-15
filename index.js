@@ -2149,6 +2149,40 @@ app.post("/api/auth/google", (req, res) => {
   res.json({ success: true, session: currentSession });
 });
 
+// API: Multi-Project Configuration
+app.get("/api/projects", (req, res) => {
+  if (!currentSession.projects) {
+    currentSession.projects = [
+      {
+        name: "raagneet",
+        githubOwner: process.env.GITHUB_OWNER || "kalispidyman",
+        githubRepo: process.env.GITHUB_REPO || "raagneet",
+        vercelProjectId: process.env.VERCEL_PROJECT_ID
+      },
+      {
+        name: "Digitech",
+        githubOwner: process.env.GITHUB_OWNER || "kalispidyman",
+        githubRepo: "Digitech",
+        vercelProjectId: ""
+      }
+    ];
+    currentSession.activeProjectIndex = 0;
+    saveSession();
+  }
+  res.json({ projects: currentSession.projects, activeIndex: currentSession.activeProjectIndex });
+});
+
+app.post("/api/projects/active", (req, res) => {
+  const { index } = req.body;
+  if (currentSession.projects && index >= 0 && index < currentSession.projects.length) {
+    currentSession.activeProjectIndex = index;
+    saveSession();
+    res.json({ success: true });
+  } else {
+    res.status(400).json({ error: "Invalid index" });
+  }
+});
+
 // API: Update active Bay of Assets API Credentials
 app.post("/api/credentials", (req, res) => {
   const { apiKey, modelName, githubToken, customApiKey, customApiBase, activeKeyType, alibabaApiKey, alibabaApiBase, googleApiKey, bluesmindsApiKey, bluesmindsApiBase, openrouterApiKey, openrouterApiBase } = req.body;

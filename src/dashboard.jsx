@@ -137,6 +137,9 @@ const NeetBotStudioFinal = () => {
     const [showCredentialsPopover, setShowCredentialsPopover] = useState(false);
 
 
+    const [projects, setProjects] = useState([]);
+    const [activeProjectIndex, setActiveProjectIndex] = useState(0);
+
     const desktopContainerRef = useRef(null);
     const [desktopDimensions, setDesktopDimensions] = useState({ scale: 1, height: 350 });
     
@@ -425,6 +428,33 @@ const NeetBotStudioFinal = () => {
         } catch (_) {}
     };
 
+    const fetchProjects = async () => {
+        try {
+            const res = await fetch(`${BACKEND_URL}/api/projects`);
+            if (res.ok) {
+                const data = await res.json();
+                setProjects(data.projects || []);
+                setActiveProjectIndex(data.activeIndex || 0);
+            }
+        } catch (_) {}
+    };
+
+    const handleSwitchProject = async (index) => {
+        try {
+            const res = await fetch(`${BACKEND_URL}/api/projects/active`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ index })
+            });
+            if (res.ok) {
+                setActiveProjectIndex(index);
+                setToast({ msg: 'Switched Project Context Successfully!', type: 'success' });
+            }
+        } catch (_) {
+            setToast({ msg: 'Network error switching project', type: 'error' });
+        }
+    };
+
     const fetchModels = async (provider = null) => {
         try {
             if (provider === 'alibaba' || !provider) {
@@ -451,7 +481,7 @@ const NeetBotStudioFinal = () => {
     };
 
     const handleRefresh = async () => {
-        await Promise.all([fetchSession(), fetchLogs(), fetchModels()]);
+        await Promise.all([fetchSession(), fetchLogs(), fetchModels(), fetchProjects()]);
     };
 
     const handleActivateKeyType = async (type) => {
@@ -868,9 +898,24 @@ const NeetBotStudioFinal = () => {
                     <div className="relative flex flex-col items-center px-6 py-1.5 sm:px-12 sm:py-3 bg-white/[0.05] backdrop-blur-3xl border-t border-b border-white/10 rounded-2xl sm:rounded-[30px] shadow-[inset_0_1px_3px_rgba(255,255,255,0.1),_0_10px_40px_rgba(0,0,0,0.4)]">
                         <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-white/30 to-transparent" />
                         <h2 className="text-xs sm:text-lg font-bold tracking-widest text-white/90 uppercase">QUANTUM AI INTERFACE</h2>
-                        <p className="text-[8px] sm:text-[10px] font-medium tracking-[0.2em] sm:tracking-[0.3em] text-cyan-200/70 uppercase mt-0.5">
-                            System Active // V3.0
-                        </p>
+                        <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4 mt-1 sm:mt-0.5">
+                            <p className="text-[8px] sm:text-[10px] font-medium tracking-[0.2em] sm:tracking-[0.3em] text-cyan-200/70 uppercase">
+                                System Active // V3.0
+                            </p>
+                            {projects && projects.length > 0 && (
+                                <select
+                                    value={activeProjectIndex}
+                                    onChange={(e) => handleSwitchProject(Number(e.target.value))}
+                                    className="bg-cyan-950/40 hover:bg-cyan-900/60 transition-colors border border-cyan-500/40 text-cyan-300 text-[9px] sm:text-[10px] rounded px-2 py-0.5 outline-none cursor-pointer tracking-widest uppercase font-bold text-center appearance-none"
+                                >
+                                    {projects.map((p, i) => (
+                                        <option key={i} value={i} className="bg-[#05080f] text-cyan-300">
+                                            {p.name}
+                                        </option>
+                                    ))}
+                                </select>
+                            )}
+                        </div>
                     </div>
 
                     {/* Right: Controls */}
@@ -1107,7 +1152,7 @@ const NeetBotStudioFinal = () => {
                     </div>
 
                     {/* --- CENTER COLUMN: COMMAND UPLINK --- */}
-                    <div className={`flex flex-col min-h-0 ${expandedPanel === 'center' ? 'w-full lg:w-full flex-grow' : expandedPanel ? 'hidden lg:hidden' : 'flex-grow'} ${activeTab === 'chat' || activeTab === 'files' ? 'flex h-full' : 'hidden lg:flex'}`}>
+                    <div className={`flex flex-col min-h-0 min-w-0 ${expandedPanel === 'center' ? 'w-full lg:w-full flex-grow' : expandedPanel ? 'hidden lg:hidden' : 'flex-grow'} ${activeTab === 'chat' || activeTab === 'files' ? 'flex h-full' : 'hidden lg:flex'}`}>
 
                         {/* Compact Inline Header: Title & Segmented Toggle & Maximize */}
                         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 gap-3 shrink-0 transition-all">

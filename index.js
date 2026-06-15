@@ -1104,6 +1104,20 @@ async function handleCommand(ctx, userPrompt) {
     return;
   }
   
+  if (cmd === "/stop") {
+    ctx.reply("🛑 **STOPPING ALL PROCESSES**\nAborting any background tasks immediately...");
+    activeJobs.forEach((job, id) => {
+      console.log(`[Stop Command] Terminating task for chatId: ${id}`);
+      try {
+        job.cancel();
+      } catch (e) {}
+    });
+    activeJobs.clear();
+    global.isThinking = false;
+    ctx.reply("✅ All background tasks have been successfully aborted.");
+    return;
+  }
+  
   return ctx.reply(`Unknown command: ${cmd}\nType /options to see available commands.`);
 }
 
@@ -2720,6 +2734,7 @@ server.listen(PORT, async () => {
         bot.telegram.setMyCommands([
           { command: "options", description: "Open Neet Bot Control Panel" },
           { command: "project", description: "Switch Working Project" },
+          { command: "stop", description: "Stop all active background processes" },
           { command: "shutdown", description: "Shutdown System" }
         ]).catch(e => console.error("Failed to register commands:", e));
       })

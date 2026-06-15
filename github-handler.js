@@ -11,9 +11,16 @@ function getOctokit(token) {
   });
 }
 
-const owner = process.env.GITHUB_OWNER;
-const repo = process.env.GITHUB_REPO;
-const branch = process.env.GITHUB_BRANCH || "main";
+let owner = process.env.GITHUB_OWNER || "kalispidyman";
+let repo = process.env.GITHUB_REPO || "raagneet";
+let branch = process.env.GITHUB_BRANCH || "main";
+
+function setGithubConfig(newOwner, newRepo, newBranch = "main") {
+  owner = newOwner;
+  repo = newRepo;
+  branch = newBranch;
+  console.log(`[GitHub] Switched active repository to: ${owner}/${repo} (${branch})`);
+}
 
 /**
  * Commits multiple files in a single batch.
@@ -268,5 +275,5 @@ async function getFileContent(filePath, token) {
   }
 }
 
-module.exports = { commitBatch, getRepoFiles, getRepoFilesWithContent, getFileContent, getRepoFilesWithMeta };
+module.exports = { commitBatch, getRepoFiles, getRepoFilesWithContent, getFileContent, getRepoFilesWithMeta, setGithubConfig };
 

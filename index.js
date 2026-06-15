@@ -872,6 +872,12 @@ async function handleUserMessage(ctx, textPrompt, base64Image = null) {
   }
   recordChat("user", userChatText);
 
+  // === COMMAND INTERCEPTOR ===
+  if (textPrompt && textPrompt.startsWith("/")) {
+    await handleCommand(ctx, textPrompt);
+    return;
+  }
+
   // === DIRECT FILE CREATION INTERCEPTOR ===
   if (textPrompt) {
     const directFileRegex = /^\s*(?:create\s+a\s+new\s+file|create\s+new\s+file|create\s+file)\s+['"“‘]?([a-zA-Z0-9_\-\.\/]+)['"”’]?\s*(?:\r?\n)([\s\S]*)$/i;

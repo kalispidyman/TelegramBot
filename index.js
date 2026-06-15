@@ -1199,11 +1199,30 @@ bot.on("callback_query", async (ctx) => {
   
   if (data.startsWith("proj_")) {
     const idx = parseInt(data.replace("proj_", ""), 10);
+    
+    // Ensure default projects exist if session was restarted
+    if (!currentSession.projects) {
+      currentSession.projects = [
+        { name: "raagneet", githubOwner: process.env.GITHUB_OWNER || "kalispidyman", githubRepo: process.env.GITHUB_REPO || "raagneet", vercelProjectId: process.env.VERCEL_PROJECT_ID },
+        { name: "Digitech", githubOwner: process.env.GITHUB_OWNER || "kalispidyman", githubRepo: "Digitech", vercelProjectId: "" }
+      ];
+    }
+    
     if (currentSession.projects && currentSession.projects[idx]) {
       currentSession.activeProjectIndex = idx;
       saveSession();
       const proj = currentSession.projects[idx];
+      
+      // Update the inline keyboard to reflect the new selection
+      const buttons = currentSession.projects.map((p, i) => {
+        const isCurrent = i === idx ? "✅ " : "";
+        return [{ text: `${isCurrent}${p.name} (${p.githubRepo})`, callback_data: `proj_${i}` }];
+      });
+      ctx.editMessageReplyMarkup({ inline_keyboard: buttons }).catch(e => console.log("Could not update inline keyboard:", e.message));
+      
       return ctx.reply(`✅ **Project context switched successfully!**\n\nActive Repo: \`${proj.githubOwner}/${proj.githubRepo}\`\n\nAll subsequent requests will now edit this codebase!`, { parse_mode: "Markdown" });
+    } else {
+      return ctx.reply("❌ Project not found.");
     }
   }
   

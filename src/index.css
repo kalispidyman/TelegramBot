@@ -1,0 +1,251 @@
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply font-sans text-white overflow-hidden;
+    background-color: #010205;
+    position: relative;
+  }
+
+  /* First slow-looping moving aurora layer */
+  body::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -2;
+    background-image: 
+      radial-gradient(circle at 20% 20%, rgba(6, 182, 212, 0.08) 0%, transparent 50%),
+      radial-gradient(circle at 80% 80%, rgba(99, 102, 241, 0.08) 0%, transparent 50%);
+    animation: auroraShift1 24s ease-in-out infinite alternate;
+  }
+
+  /* Second overlapping slow-looping moving aurora layer */
+  body::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background-image: 
+      radial-gradient(circle at 80% 20%, rgba(219, 39, 119, 0.04) 0%, transparent 45%),
+      radial-gradient(circle at 20% 80%, rgba(16, 185, 129, 0.04) 0%, transparent 45%);
+    animation: auroraShift2 28s ease-in-out infinite alternate;
+  }
+
+  /* Universal text-shadow for crisp visibility */
+  h1, h2, h3, h4, h5, h6, span, p, button, input, textarea, li, a {
+    text-shadow: 0 1.5px 3px rgba(0, 0, 0, 0.95), 0 0.5px 1px rgba(0, 0, 0, 0.9);
+  }
+}
+
+@keyframes auroraShift1 {
+  0% {
+    opacity: 0.6;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+  100% {
+    opacity: 0.6;
+    transform: scale(1);
+  }
+}
+
+@keyframes auroraShift2 {
+  0% {
+    opacity: 0.5;
+    transform: scale(1.05);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0.5;
+    transform: scale(1.05);
+  }
+}
+
+/* Custom Scrollbar */
+.custom-scrollbar::-webkit-scrollbar { width: 4px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.02); border-radius: 10px; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 10px; }
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(34, 211, 238, 0.4); }
+
+/* Glass Base */
+.glass {
+  background: rgba(10, 15, 30, 0.4);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.1);
+}
+
+/* Specific Component Shapes */
+.glass-pill {
+  @apply glass rounded-full flex items-center justify-center;
+}
+
+.glass-rounded {
+  @apply glass rounded-2xl;
+}
+
+.glass-cut {
+  background: rgba(10, 15, 30, 0.4);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+}
+
+/* Top Notch Shape Approximation (Using standard CSS tricks) */
+.top-notch {
+  @apply glass relative overflow-hidden;
+  border-bottom-left-radius: 30px;
+  border-bottom-right-radius: 30px;
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+  border-top: none;
+}
+
+/* Glow effects */
+.glow-cyan {
+  box-shadow: 0 0 15px rgba(34, 211, 238, 0.3), inset 0 -2px 10px rgba(34, 211, 238, 0.2);
+  border-bottom: 2px solid rgba(34, 211, 238, 0.8);
+}
+.glow-violet {
+  box-shadow: 0 0 15px rgba(124, 58, 237, 0.3), inset 0 -2px 10px rgba(124, 58, 237, 0.2);
+  border-bottom: 2px solid rgba(124, 58, 237, 0.8);
+}
+.glow-emerald {
+  box-shadow: 0 0 15px rgba(16, 185, 129, 0.3), inset 0 -2px 10px rgba(16, 185, 129, 0.2);
+  border-bottom: 2px solid rgba(16, 185, 129, 0.8);
+}
+.glow-red {
+  box-shadow: 0 0 15px rgba(239, 68, 68, 0.3), inset 0 -2px 10px rgba(239, 68, 68, 0.2);
+  border-bottom: 2px solid rgba(239, 68, 68, 0.8);
+}
+
+/* Animated Data Lines */
+.data-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: linear-gradient(to bottom, transparent, rgba(34, 211, 238, 0.8), transparent);
+  animation: dataStream 3s infinite linear;
+}
+
+@keyframes dataStream {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100vh); }
+}
+
+/* Radar Animation */
+.radar-bg {
+  position: absolute;
+  inset: 10px;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, transparent 70%, rgba(34, 211, 238, 0.6) 100%);
+  animation: radarSpin 2s linear infinite;
+  mask-image: radial-gradient(circle at center, transparent 10%, black 90%);
+  -webkit-mask-image: radial-gradient(circle at center, transparent 10%, black 90%);
+}
+
+@keyframes radarSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.radar-grid {
+  position: absolute;
+  inset: 10px;
+  border-radius: 50%;
+  border: 1px solid rgba(34, 211, 238, 0.3);
+  background-image: 
+    linear-gradient(rgba(34, 211, 238, 0.1) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(34, 211, 238, 0.1) 1px, transparent 1px);
+  background-size: 20px 20px;
+  background-position: center;
+}
+.radar-grid::after {
+  content: '';
+  position: absolute;
+  inset: 20%;
+  border-radius: 50%;
+  border: 1px solid rgba(34, 211, 238, 0.2);
+}
+.radar-grid::before {
+  content: '';
+  position: absolute;
+  inset: 40%;
+  border-radius: 50%;
+  border: 1px solid rgba(34, 211, 238, 0.2);
+}
+
+.radar-crosshair {
+  position: absolute;
+  inset: 10px;
+  border-radius: 50%;
+}
+.radar-crosshair::after {
+  content: '';
+  position: absolute;
+  top: 50%; left: 0; right: 0; height: 1px;
+  background: rgba(34, 211, 238, 0.4);
+}
+.radar-crosshair::before {
+  content: '';
+  position: absolute;
+  left: 50%; top: 0; bottom: 0; width: 1px;
+  background: rgba(34, 211, 238, 0.4);
+}
+
+/* Matrix Animation */
+.matrix-fall {
+  position: absolute;
+  top: -100%;
+  width: 1px;
+  height: 50%;
+  background: linear-gradient(to bottom, transparent, #10b981 80%, #fff 100%);
+  animation: matrixRain 3s linear infinite;
+  opacity: 0.5;
+}
+
+@keyframes matrixRain {
+  0% { transform: translateY(0); opacity: 0; }
+  10% { opacity: 0.5; }
+  90% { opacity: 0.5; }
+  100% { transform: translateY(400px); opacity: 0; }
+}
+
+/* Fix option visibility in dark mode select dropdowns */
+select option {
+  background-color: #0c0f1d !important;
+  color: #cffafe !important;
+  padding: 8px;
+}
+select option:disabled {
+  color: rgba(255, 255, 255, 0.3) !important;
+}
+
+/* Model Selector Dropdown Scrollbar */
+.model-dropdown-scrollbar::-webkit-scrollbar {
+  width: 5px;
+}
+.model-dropdown-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.model-dropdown-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(16, 185, 129, 0.4) !important;
+  border-radius: 10px;
+}
+.model-dropdown-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(52, 211, 153, 0.7) !important;
+}

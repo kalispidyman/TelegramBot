@@ -1220,7 +1220,7 @@ bot.on("callback_query", async (ctx) => {
       });
       ctx.editMessageReplyMarkup({ inline_keyboard: buttons }).catch(e => console.log("Could not update inline keyboard:", e.message));
       
-      return ctx.reply(`✅ **Project context switched successfully!**\n\nActive Repo: \`${proj.githubOwner}/${proj.githubRepo}\`\n\nAll subsequent requests will now edit this codebase!`, { parse_mode: "Markdown" });
+      return ctx.reply(`✅ <b>Project context switched successfully!</b>\n\nActive Repo: <code>${proj.githubOwner}/${proj.githubRepo}</code>\n\nAll subsequent requests will now edit this codebase!`, { parse_mode: "HTML" }).catch(e => console.error("Error sending reply:", e));
     } else {
       return ctx.reply("❌ Project not found.");
     }
@@ -1256,7 +1256,7 @@ bot.on("callback_query", async (ctx) => {
   if (data && data.includes("/")) {
     currentSession.modelName = data;
     saveSession();
-    return ctx.reply(`✅ Model successfully changed to: \`${data}\``, { parse_mode: 'Markdown' });
+    return ctx.reply(`✅ <b>Model successfully changed to:</b> <code>${data}</code>`, { parse_mode: 'HTML' }).catch(e => console.error(e));
   }
 });
 

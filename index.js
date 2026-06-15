@@ -712,7 +712,7 @@ bot.command("provider", (ctx) => {
 });
 
 // Callback query listener to handle inline keyboard selections
-bot.on("callback_query", async (ctx) => {
+bot.on("callback_query", async (ctx, next) => {
   const data = ctx.callbackQuery.data;
   if (data && data.startsWith("setmodel:")) {
     const newModel = data.split(":")[1];
@@ -745,6 +745,9 @@ bot.on("callback_query", async (ctx) => {
       parse_mode: 'Markdown'
     });
   }
+
+  // If no conditions match here, pass control to the main callback_query handler!
+  return next();
 });
 
 let activeCronJobs = [];
